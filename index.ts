@@ -179,193 +179,166 @@ class Client6 {
 
 Client6.main();
 
-// 7) you have some util file with described request method with all necessary data received via props, f.e. request = (method, URL, data) => {},
-// inside of which is already processed default data for current website: token, host, etc..
-// create a patchRequest, that will use existing request method inside - what design pattern can be used here?
+abstract class Command {
+    protected backup: number;
 
-// example of possible request declaration:
+    constructor(
+      protected calculationService: CalculationService,
+      protected calculator: Calculator
+    ) {}
 
-// const request = (method: string, url: string, data: string, headers: string, responseType: string = 'json') => {
-//     let requestHeaders = {};
+    public undo(): void {
+        this.calculator.currentValue = this.backup;
+    }
 
-//     if (headers) {
-//         requestHeaders = { ...headers };
-//     }
+    protected saveBackup(): void {
+        this.backup = this.calculator.currentValue;
+    }
 
-//     const authToken = getToken();
+    public abstract execute(secondOperand: number): boolean;
+}
 
-//     if (authToken) {
-//         requestHeaders['Authorization'] = `Bearer ${authToken}`;
-//     }
+class AddCommand extends Command {
+  public execute(secondOperand: number): boolean {
+    this.saveBackup();
+    this.calculator.currentValue = this.calculationService.add(this.calculator.currentValue, secondOperand);
 
-//     return axios.request({
-//         headers: requestHeaders,
-//         responseType,
-//         url,
-//         method,
-//         data
-//     });
-// };
+    return true;
+  }
+}
 
-// const patchRequest = (url: string, data: string, headers: string, responseType: string = 'json') => { // decarator
-//     return request('PATCH', url, data, headers, responseType);
-// }
+class SubCommand extends Command {
+  public execute(secondOperand: number): boolean {
+    this.saveBackup();
+    this.calculator.currentValue = this.calculationService.sub(this.calculator.currentValue, secondOperand);
 
-// 8 Provide simple calculator, using Command pattern - commands history, cancelation
+    return true;
+  }
+}
 
-// abstract class Command {
-//     protected backup: string;
+class MultiplyCommand extends Command {
+  public execute(secondOperand: number): boolean {
+    this.saveBackup();
+    this.calculator.currentValue = this.calculationService.multiply(this.calculator.currentValue, secondOperand);
 
-//     constructor(protected app: Application, protected editor: Editor) {}
+    return true;
+  }
+}
 
-//     public undo(): void {
-//         this.editor.text = this.backup;
-//     }
+class DivideCommand extends Command {
+  public execute(secondOperand: number): boolean {
+    this.saveBackup();
+    this.calculator.currentValue = this.calculationService.divide(this.calculator.currentValue, secondOperand);
 
-//     protected saveBackup(): void {
-//         this.backup = this.editor.text;
-//     }
+    return true;
+  }
+}
 
-//     public abstract execute(): boolean;
-// }
+class CommandHistory {
+    private stack: Command[] = [];
 
-// class CopyCommand extends Command {
-//     public execute(): boolean {
-//         this.app.clipboard = this.editor.getSelection();
+    public push(command: Command): void {
+        this.stack.push(command);
+    }
 
-//         return false;
-//     }
-// }
-
-// class CutCommand extends Command {
-//     public execute(): boolean {
-//         this.saveBackup();
-//         this.app.clipboard = this.editor.getSelection();
-//         this.editor.deleteSelection();
-
-//         return true;
-//     }
-// }
-
-// class PasteCommand extends Command {
-//     public execute(): boolean {
-//         this.saveBackup();
-//         this.editor.replaceSelection(this.app.clipboard);
-
-//         return true;
-//     }
-// }
-
-// class UndoCommand extends Command {
-//     public execute(): boolean {
-//         this.app.undo();
-
-//         return false;
-//     }
-// }
-
-// class CommandHistory {
-//     private history: Command[];
-
-//     public push(command: Command): void {
-//         this.history.push(command);
-//     }
-
-//     public pop(): Command {
-//         return this.history.pop();
-//     }
-// }
-
-// class Editor {
-//     public text: string;
-
-//     public getSelection(): string {
-//         return this.text;
-//     }
-
-//     public deleteSelection(): void {
-//         this.text = '';
-//     }
-
-//     public replaceSelection(text: string): void {
-//         this.text = text;
-//     }
-// }
-
-// class Application {
-//     public clipboard: string;
-//     public editors: Editor[];
-//     public activeEditor: Editor[];
-//     public history: CommandHistory;
-
-//     public createUI(): void {
-//         const copy = function(): void {
-//             this.executeCommand(new CopyCommand(this, this.activeEditor));
-//         };
-
-//         copyButton.setCommand(copy);
-//         shortcuts.onKeyPress("Ctrl+C", copy)
-//     }
-
-//     public executeCommand(command: Command): void {
-//         if (command.execute()) {
-//             this.history.push(command);
-//         }
-//     }
-
-//     public undo(): void {
-//         const command = this.history.pop();
-
-//         if (command) {
-//             command.undo();
-//         }
-//     }
-// }
-
-// abstract class Command {
-//     protected backup: number;
-
-//     constructor(protected calculationService: CalculationService) {}
-
-//     public undo(): void {
-//         this.editor.text = this.backup;
-//     }
-
-//     protected saveBackup(): void {
-//         this.backup = this.editor.text;
-//     }
-
-//     public abstract execute(): boolean;
-// }
-
-// class CommandHistory {
-//     private history: Command[];
-
-//     public push(command: Command): void {
-//         this.history.push(command);
-//     }
-
-//     public pop(): Command {
-//         return this.history.pop();
-//     }
-// }
+    public pop(): Command {
+        return this.stack.pop();
+    }
+}
 class Calculator {
+  private history: CommandHistory = new CommandHistory();
+  private addCommand: Command;
+  private subCommand: Command;
+  private multiplyCommand: Command;
+  private divideCommand: Command;
+  public currentValue: number = 0;
 
+  public setAddCommand(command: Command): void {
+    this.addCommand = command;
+  }
+
+  public setSubCommand(command: Command): void {
+    this.subCommand = command;
+  }
+
+  public setMultiplyCommand(command: Command): void {
+    this.multiplyCommand = command;
+  }
+
+  public setDivideCommand(command: Command): void {
+    this.divideCommand = command;
+  }
+
+  public undo(): void {
+      const command = this.history.pop();
+
+      if (command) {
+          command.undo();
+      }
+  }
+
+  public add(value: number): void {
+    this.executeCommand(this.addCommand, value);
+  }
+
+  public sub(value: number): void {
+    this.executeCommand(this.subCommand, value);
+  }
+
+  public multiply(value: number): void {
+    this.executeCommand(this.multiplyCommand, value);
+  }
+
+  public divide(value: number): void {
+    this.executeCommand(this.divideCommand, value);
+  }
+
+  private executeCommand(command: Command, secondOperand: number): void {
+    if (command.execute(secondOperand)) {
+        this.history.push(command);
+    }
+  }
 }
+
 class CalculationService {
-    public add(term1: number, term2: number): number {
-        return term1 + term2;
-    }
+  public add(term1: number, term2: number): number {
+      return term1 + term2;
+  }
 
-    public sub(term1: number, term2: number): number {
-        return term1 - term2;
-    }
+  public sub(term1: number, term2: number): number {
+      return term1 - term2;
+  }
 
-    public multiply(term1: number, term2: number): number {
-        return term1 * term2;
-    }
+  public multiply(term1: number, term2: number): number {
+      return term1 * term2;
+  }
 
-    public divide(term1: number, term2: number): number {
-        return term1 / term2;
-    }
+  public divide(term1: number, term2: number): number {
+      return term1 / term2;
+  }
 }
+
+class CalculatorClient {
+  public static main(): void {
+    const calculator = new Calculator();
+    calculator.setAddCommand(new AddCommand(new CalculationService(), calculator));
+    calculator.setSubCommand(new SubCommand(new CalculationService(), calculator));
+    calculator.setMultiplyCommand(new MultiplyCommand(new CalculationService(), calculator));
+    calculator.setDivideCommand(new DivideCommand(new CalculationService(), calculator));
+    calculator.add(2);
+    console.log(calculator.currentValue);
+    calculator.undo();
+    calculator.undo();
+    console.log(calculator.currentValue);
+    calculator.add(10);
+    calculator.sub(2);
+    calculator.divide(2);
+    console.log(calculator.currentValue);
+    calculator.multiply(4);
+    console.log(calculator.currentValue);
+    calculator.undo();
+    console.log(calculator.currentValue);
+  }
+}
+
+CalculatorClient.main();
