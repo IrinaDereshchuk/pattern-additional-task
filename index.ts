@@ -91,6 +91,35 @@ class Client2 {
 
 Client2.main();
 
+// 3) rewrite code, making it reusable - what possible pattern?
+var user = {
+  user: 'defaultusername',
+  avatar: 'useravatar.png'
+}
+
+function newName(name) {
+  this.user = name;
+  return this;
+}
+
+newName('user1');
+
+interface IUser {
+  user: string;
+  avatar: string;
+}
+
+class UserDecorator implements IUser {
+  public user: string;
+  public avatar: string;
+
+  public newName(name: string): IUser {
+    return newName(name);
+  }
+}
+
+
+
 // 4) Add listener for input with type `number` and display two values (multiply number by three; add 5 to number)
 // maybe strategy or state
 
